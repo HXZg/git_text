@@ -1,0 +1,58 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build iOS (No Codesign)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter installation
+        run: |
+          flutter --version
+          flutter doctor -v
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build iOS (No Codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Create iOS Archive (Unsigned)
+        run: |
+          cd build/ios/iphoneos
+          zip -r ../../../ios_build_unsigned.zip Runner.app
+          cd ../../..
+
+      - name: Upload iOS Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-unsigned
+          path: ios_build_unsigned.zip
+          retention-days: 14
+
+      - name: Build Summary
+        run: |
+          echo "## iOS Build Complete ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** This build is unsigned and cannot be installed on devices directly." >> $GITHUB_STEP_SUMMARY
+          echo "To create a distributable IPA, you need:" >> $GITHUB_STEP_SUMMARY
+          echo "- Apple Developer account" >> $GITHUB_STEP_SUMMARY
+          echo "- Provisioning profile and certificate" >> $GITHUB_STEP_SUMMARY
+          echo "- Configure code signing in the workflow" >> $GITHUB_STEP_SUMMARY
